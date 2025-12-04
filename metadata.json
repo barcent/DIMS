@@ -1,0 +1,5 @@
+{
+  "name": "DIMS - Division Information Management System",
+  "description": "A networked application demonstrating core concepts from Data Communication and Networking (DCN). It includes features like a directory, document exchange, circulars, ticketing, and analytics, with a focus on visually representing networking principles like real-time updates and data integrity.",
+  "requestFramePermissions": []
+}
