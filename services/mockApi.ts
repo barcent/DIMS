@@ -9,13 +9,16 @@ import { Document, Ticket, Circular, DirectoryUser } from '../types';
 
 const NETWORK_LATENCY = 500; // 500ms delay
 
+// Mutable mock store for runtime changes
+let currentCirculars = [...MOCK_CIRCULARS];
+
 export const getDashboardAnalytics = (): Promise<any> => {
   return new Promise(resolve => {
     setTimeout(() => {
       resolve({
         activeTickets: MOCK_TICKETS.filter(t => t.status === 'Open' || t.status === 'In Progress').length,
         documentsInReview: 5,
-        pendingCirculars: MOCK_CIRCULARS.filter(c => c.acknowledgedBy.length < c.totalRecipients).length,
+        pendingCirculars: currentCirculars.filter(c => c.acknowledgedBy.length < c.totalRecipients).length,
         onlineUsers: MOCK_DIRECTORY_USERS.filter(u => u.isOnline).length,
         ticketStatusData: [
             { name: 'Open', value: MOCK_TICKETS.filter(t => t.status === 'Open').length },
@@ -60,7 +63,25 @@ export const getTickets = (): Promise<Ticket[]> => {
 
 export const getCirculars = (): Promise<Circular[]> => {
     return new Promise(resolve => {
-        setTimeout(() => resolve(MOCK_CIRCULARS), NETWORK_LATENCY);
+        setTimeout(() => resolve(currentCirculars), NETWORK_LATENCY);
+    });
+};
+
+export const createCircular = (circular: Circular): Promise<Circular> => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            currentCirculars = [circular, ...currentCirculars];
+            resolve(circular);
+        }, NETWORK_LATENCY);
+    });
+};
+
+export const updateCircular = (updatedCircular: Circular): Promise<Circular> => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            currentCirculars = currentCirculars.map(c => c.id === updatedCircular.id ? updatedCircular : c);
+            resolve(updatedCircular);
+        }, NETWORK_LATENCY);
     });
 };
 

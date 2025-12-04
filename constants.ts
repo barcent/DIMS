@@ -67,7 +67,9 @@ export const MOCK_CIRCULARS: Circular[] = [
         publishedBy: 'System Root', 
         publishedAt: daysAgo(0), 
         acknowledgedBy: [], 
-        totalRecipients: 0 
+        totalRecipients: 0,
+        attachments: [],
+        history: []
     },
     { 
         id: 'c3', 
@@ -78,7 +80,9 @@ export const MOCK_CIRCULARS: Circular[] = [
         publishedBy: 'Admin User', 
         publishedAt: daysAgo(1), 
         acknowledgedBy: [], 
-        totalRecipients: 20 
+        totalRecipients: 20,
+        attachments: ['Health_Safety_v2.pdf'],
+        history: []
     },
     { 
         id: 'c4', 
@@ -89,7 +93,9 @@ export const MOCK_CIRCULARS: Circular[] = [
         publishedBy: 'Frank Blue', 
         publishedAt: daysAgo(2), 
         acknowledgedBy: ['u2'], 
-        totalRecipients: 25 
+        totalRecipients: 25,
+        attachments: [],
+        history: [] 
     },
     { 
         id: 'm1', 

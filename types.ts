@@ -66,6 +66,12 @@ export interface Ticket {
 
 export type CommunicationType = 'announcement' | 'circular' | 'memo';
 
+export interface CircularHistory {
+    date: Date;
+    action: string;
+    modifiedBy: string;
+}
+
 export interface Circular {
     id: string;
     title: string;
@@ -76,4 +82,6 @@ export interface Circular {
     publishedAt: Date;
     acknowledgedBy: string[]; // List of user IDs who have acknowledged
     totalRecipients: number;
+    attachments?: string[];
+    history?: CircularHistory[];
 }

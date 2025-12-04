@@ -90,8 +90,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
                     </div>
                </div>
 
-               {/* Terms and Conditions Section */}
-               <div className="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-100">
+               {/* Terms and Conditions Section - Containerization Removed */}
+               <div className="mb-8">
                    <div className="flex items-start">
                        <div className="flex items-center h-5">
                             <input
@@ -99,7 +99,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
                                 type="checkbox"
                                 checked={acceptedTerms}
                                 readOnly
-                                className={`h-4 w-4 rounded border-gray-300 focus:ring-brand-primary transition-colors ${acceptedTerms ? 'text-brand-primary cursor-default' : 'text-gray-300 cursor-not-allowed'}`}
+                                className={`h-4 w-4 rounded border-gray-300 focus:ring-brand-primary transition-colors cursor-pointer ${acceptedTerms ? 'text-brand-primary' : 'text-gray-300'}`}
                             />
                        </div>
                        <div className="ml-3 text-sm">
