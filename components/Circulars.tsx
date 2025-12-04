@@ -159,7 +159,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
 
         const interval = setInterval(() => {
             setCurrentPage((prev) => (prev + 1) % totalPages);
-        }, 5000); // Rotate every 5 seconds
+        }, 7000); // Rotate every 10 seconds
 
         return () => clearInterval(interval);
     }, [totalPages, isPaused]);
@@ -318,12 +318,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                                 
                                 <h3 className="font-bold text-gray-800 text-base mb-1.5 leading-snug group-hover:text-brand-primary transition-colors line-clamp-1 flex items-center gap-2">
                                     {item.title}
-                                    {isNew(item.publishedAt) && (
-                                        <span className="relative flex h-2 w-2">
-                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                        </span>
-                                    )}
+                                    {isNew(item.publishedAt)}
                                 </h3>
                                 
                                 <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">
@@ -629,7 +624,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                                             <span className="font-bold">Acknowledged</span>
                                         </div>
                                         <span className="text-xs text-gray-500 font-medium">
-                                            Confirmed on {getMockAckDate(selectedItem.publishedAt)}
+                                            Acknowledged on {getMockAckDate(selectedItem.publishedAt)}
                                         </span>
                                      </div>
                                  </div>
