@@ -1,20 +1,46 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# DIMS - Division Information Management System
 
-# Run and deploy your AI Studio app
+This project is a web-based Division Information Management System (DIMS) designed to streamline communication and information access within a division.
 
-This contains everything you need to run your app locally.
+## Running the Project Locally
 
-View your app in AI Studio: https://ai.studio/apps/drive/1EUgq3v8-ZocZWdeR-ZwChYhT-D2SolRH
+To run this project on your local machine, you will need to have Node.js and npm installed.
 
-## Run Locally
+### 1. Clone the Repository
 
-**Prerequisites:**  Node.js
+First, clone this repository to your local machine.
 
+### 2. Set Up the Backend
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1.  Navigate to the `server` directory:
+    ```bash
+    cd server
+    ```
+
+2.  Install the backend dependencies:
+    ```bash
+    npm install
+    ```
+
+3.  Start the backend server:
+    ```bash
+    npm start
+    ```
+
+The backend server will start on `http://localhost:3001`.
+
+### 3. Set Up the Frontend
+
+1.  In a new terminal, navigate to the root project directory.
+
+2.  Install the frontend dependencies:
+    ```bash
+    npm install
+    ```
+
+3.  Start the frontend development server:
+    ```bash
+    npm run dev
+    ```
+
+The frontend application will be accessible at `http://localhost:3000`.
