@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const {
@@ -13,6 +12,11 @@ const port = 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Add a root route to provide a helpful message
+app.get('/', (req, res) => {
+  res.send('<h1>Backend Server is Running</h1><p>This is an API server. You can test the endpoints using a tool like Postman or by accessing the API routes directly.</p><p>For example, try visiting <a href="/api/documents">/api/documents</a> to see the mock document data.</p>');
+});
 
 let currentCirculars = [...MOCK_CIRCULARS];
 
