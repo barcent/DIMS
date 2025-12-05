@@ -84,4 +84,7 @@ export interface Circular {
     totalRecipients: number;
     attachments?: string[];
     history?: CircularHistory[];
+    // Routing Logic
+    targetRoles: Role[]; // E.g., [Role.STAFF, Role.FACULTY]
+    targetUserIds: string[]; // Specific users: ['u2', 'u5']
 }

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { User, Circular, CommunicationType, Role } from '../types';
 import { getCirculars, createCircular, updateCircular } from '../services/mockApi';
 import { PdfIcon, DocxIcon, XlsxIcon, PngIcon, DocsIcon } from './icons';
+import { MOCK_DIRECTORY_USERS } from '../constants';
 
 // Helper for relative time
 const getRelativeTime = (date: Date) => {
@@ -28,12 +29,21 @@ const getRelativeTime = (date: Date) => {
     return 'Just now';
 };
 
+// Simple Edit Icon Component for the Header
+const EditPencilIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+);
+
 interface FormData {
     title: string;
     type: CommunicationType;
     priority: 'high' | 'normal';
     content: string;
     attachments: string[];
+    targetRoles: Role[];
+    targetUserIds: string[];
 }
 
 const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
@@ -48,7 +58,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
 
     // Archive Pagination State
     const [archivePage, setArchivePage] = useState(0);
-    const ARCHIVE_ITEMS_PER_PAGE = 10;
+    const ARCHIVE_ITEMS_PER_PAGE = 5;
 
     // Modal State
     const [selectedItem, setSelectedItem] = useState<Circular | null>(null);
@@ -64,7 +74,9 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
         type: 'announcement',
         priority: 'normal',
         content: '',
-        attachments: []
+        attachments: [],
+        targetRoles: [],
+        targetUserIds: []
     });
     const [formErrors, setFormErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,8 +93,25 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
     // Refs for modal scrolling
     const modalContentRef = useRef<HTMLDivElement>(null);
 
-    const isSuperAdmin = currentUser.role === Role.SUPER_ADMIN;
-    const canCreate = isSuperAdmin || currentUser.role === Role.ADMIN;
+    // Permission Logic
+    const isSystemAdmin = currentUser.role === Role.SUPER_ADMIN;
+    const isDivisionAdmin = currentUser.role === Role.ADMIN;
+    
+    // Only System Admin and Division Admin can create
+    const canCreate = isSystemAdmin || isDivisionAdmin;
+
+    // Helper to determine if the current user can edit a specific item
+    const canEditItem = (item: Circular) => {
+        if (isSystemAdmin) return true; // System Admin edits all
+        if (isDivisionAdmin && item.publishedBy === currentUser.name) return true; // Division Admin edits own
+        return false; // Staff/Faculty cannot edit, Division Admin cannot edit others
+    };
+
+    // Helper to determine if the Edited tag should be shown
+    const shouldShowEditedTag = (item: Circular) => {
+        if (isSystemAdmin || isDivisionAdmin) return false;
+        return (item.history && item.history.length > 0 && !item.acknowledgedBy.includes(currentUser.id));
+    };
 
     const fetchCirculars = useCallback(async () => {
         setLoading(true);
@@ -141,7 +170,15 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
 
     const handleOpenCreate = () => {
         setEditorMode('create');
-        setFormData({ title: '', type: 'announcement', priority: 'normal', content: '', attachments: [] });
+        setFormData({ 
+            title: '', 
+            type: 'announcement', 
+            priority: 'normal', 
+            content: '', 
+            attachments: [],
+            targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], // Default all
+            targetUserIds: []
+        });
         setFormErrors([]);
         setIsEditorOpen(true);
     };
@@ -154,7 +191,9 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
             type: circular.type,
             priority: circular.priority,
             content: circular.content,
-            attachments: circular.attachments || []
+            attachments: circular.attachments || [],
+            targetRoles: circular.targetRoles || [],
+            targetUserIds: circular.targetUserIds || []
         });
         setFormErrors([]);
         setIsEditorOpen(true);
@@ -179,12 +218,17 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
 
     const validateForm = (): boolean => {
         const errors: string[] = [];
-        if (!formData.title.trim()) errors.push("Title is required.");
-        if (!formData.content.trim()) errors.push("Content is required.");
+        if (!formData.title.trim()) errors.push("Title");
+        if (!formData.content.trim()) errors.push("Content");
         
         // Attachment validation: Required if type is NOT announcement
         if (formData.type !== 'announcement' && formData.attachments.length === 0) {
-            errors.push(`Attachments are required for ${formData.type}s.`);
+            errors.push(`Attachments (required for ${formData.type})`);
+        }
+        
+        // Routing validation
+        if (formData.targetRoles.length === 0 && formData.targetUserIds.length === 0) {
+            errors.push("Target Audience (select at least one group or person)");
         }
 
         setFormErrors(errors);
@@ -210,7 +254,9 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                 acknowledgedBy: [],
                 totalRecipients: 50, // Mock recipients count
                 attachments: formData.attachments,
-                history: []
+                history: [],
+                targetRoles: formData.targetRoles,
+                targetUserIds: formData.targetUserIds
             };
             await createCircular(newCircular);
         } else if (editorMode === 'edit' && editingId) {
@@ -223,6 +269,8 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                 if (existing.priority !== formData.priority) changes.push("Priority");
                 if (existing.type !== formData.type) changes.push("Type");
                 if (JSON.stringify(existing.attachments) !== JSON.stringify(formData.attachments)) changes.push("Attachments");
+                if (JSON.stringify(existing.targetRoles) !== JSON.stringify(formData.targetRoles)) changes.push("Target Groups");
+                if (JSON.stringify(existing.targetUserIds) !== JSON.stringify(formData.targetUserIds)) changes.push("Target Users");
                 
                 const actionDescription = changes.length > 0 ? `Updated: ${changes.join(', ')}` : "Edited";
 
@@ -233,6 +281,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                     type: formData.type,
                     priority: formData.priority,
                     attachments: formData.attachments,
+                    acknowledgedBy: [], // Reset acknowledgements on edit
                     history: [
                         ...(existing.history || []),
                         {
@@ -240,7 +289,9 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                             action: actionDescription,
                             modifiedBy: currentUser.name
                         }
-                    ]
+                    ],
+                    targetRoles: formData.targetRoles,
+                    targetUserIds: formData.targetUserIds
                 };
                 await updateCircular(updated);
             }
@@ -251,13 +302,32 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
         setIsEditorOpen(false);
     };
 
-    // Filter Logic
+    // Filter Logic: Filter based on Routing
+    const visibleCirculars = useMemo(() => {
+        return circulars.filter(c => {
+            // Super Admin sees all
+            if (currentUser.role === Role.SUPER_ADMIN) return true;
+            
+            // Author sees their own
+            if (c.publishedBy === currentUser.name) return true;
+            
+            // Routing Logic
+            const inTargetRole = c.targetRoles && c.targetRoles.includes(currentUser.role);
+            const inTargetUser = c.targetUserIds && c.targetUserIds.includes(currentUser.id);
+            
+            return inTargetRole || inTargetUser;
+        });
+    }, [circulars, currentUser]);
+
+    // Filter Logic for Unread (using visibleCirculars)
     const unreadCommunications = useMemo(() => {
-        if (isSuperAdmin) return [];
-        return circulars
+        // System Admin: No need for read/acknowledge action (Empty list for "Action Required")
+        if (isSystemAdmin) return [];
+
+        return visibleCirculars
             .filter(c => !c.acknowledgedBy.includes(currentUser.id) && c.publishedBy !== currentUser.name)
             .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
-    }, [circulars, currentUser.id, currentUser.name, isSuperAdmin]);
+    }, [visibleCirculars, currentUser.id, currentUser.name, isSystemAdmin]);
 
     const totalPages = Math.ceil(unreadCommunications.length / ITEMS_PER_PAGE);
 
@@ -293,7 +363,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
     }, [currentPage, unreadCommunications, ITEMS_PER_PAGE]);
 
     const filteredList = useMemo(() => {
-        let result = circulars;
+        let result = visibleCirculars;
         if (activeTab !== 'all') result = result.filter(c => c.type === activeTab);
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
@@ -314,7 +384,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
             return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
         });
         return result;
-    }, [circulars, activeTab, searchQuery, statusFilter, sortOrder, currentUser.id]);
+    }, [visibleCirculars, activeTab, searchQuery, statusFilter, sortOrder, currentUser.id]);
 
     const totalArchivePages = Math.ceil(filteredList.length / ARCHIVE_ITEMS_PER_PAGE);
     const paginatedArchiveList = useMemo(() => {
@@ -329,6 +399,14 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
             case 'circular': return 'bg-blue-50 border-blue-200 text-blue-700';
             case 'memo': return 'bg-purple-50 border-purple-200 text-purple-700';
             default: return 'bg-orange-50 border-orange-200 text-orange-700';
+        }
+    };
+    
+    const getHeaderStyle = (type: CommunicationType) => {
+        switch (type) {
+            case 'circular': return 'bg-blue-50 border-b border-blue-100 text-blue-900';
+            case 'memo': return 'bg-purple-50 border-b border-purple-100 text-purple-900';
+            default: return 'bg-orange-50 border-b border-orange-100 text-orange-900';
         }
     };
 
@@ -395,8 +473,8 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
     return (
         <div className="space-y-8 max-w-5xl mx-auto pb-10">
             
-            {/* Action Required Section */}
-            {!isSuperAdmin && (
+            {/* Action Required Section - Only for Staff/Faculty or Division Admin (when not author) */}
+            {!isSystemAdmin && (
                 hasPending ? (
                     <div 
                         className="bg-gradient-to-br from-[#FFF5F5] to-white rounded-2xl p-6 md:p-8 border border-red-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md"
@@ -432,19 +510,24 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2 relative z-10">
-                            {visibleUnreadItems.map(item => (
+                            {visibleUnreadItems.map(item => {
+                                const isEdited = shouldShowEditedTag(item);
+                                return (
                                 <div 
                                     key={item.id} 
                                     onClick={() => setSelectedItem(item)}
                                     className="group bg-white rounded-lg p-4 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-primary/30 transition-all duration-300 cursor-pointer flex flex-col h-full animate-fade-in-up"
                                 >
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${getBadgeStyle(item.type)}`}>{item.type}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${getBadgeStyle(item.type)}`}>{item.type}</span>
+                                            {isEdited && <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide bg-red-600 text-white shadow-sm border border-transparent">Edited</span>}
+                                        </div>
                                         <span className="text-[10px] font-medium text-gray-400">{getRelativeTime(item.publishedAt)}</span>
                                     </div>
                                     <h3 className="font-bold text-gray-800 text-base mb-1.5 leading-snug group-hover:text-brand-primary transition-colors line-clamp-1 flex items-center gap-2">
                                         {item.title}
-                                        {isNew(item.publishedAt)}
+                                        {isNew(item.publishedAt) && !isEdited}
                                     </h3>
                                     <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{item.content}</p>
                                     <div className="mt-auto flex items-center justify-end border-t border-gray-50 pt-2">
@@ -454,7 +537,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                                         </span>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </div>
                 ) : (
@@ -514,6 +597,8 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                     {paginatedArchiveList.map(doc => {
                         const isAck = doc.acknowledgedBy.includes(currentUser.id);
                         const isAuthor = doc.publishedBy === currentUser.name;
+                        // Edited Logic: Only show if NOT system/division admin, HAS history, and NOT acknowledged
+                        const isEdited = shouldShowEditedTag(doc);
                         
                         return (
                             <div key={doc.id} className="p-6 hover:bg-gray-50 transition-colors group border-b border-gray-50 last:border-b-0">
@@ -521,6 +606,7 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                                     <div className="flex-1 cursor-pointer" onClick={() => setSelectedItem(doc)}>
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${getBadgeStyle(doc.type)}`}>{doc.type}</span>
+                                            {isEdited && <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border bg-red-600 text-white shadow-sm border-transparent">Edited</span>}
                                             <span className="text-xs text-gray-500">{doc.publishedAt.toLocaleDateString()}</span>
                                         </div>
                                         <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-brand-primary transition-colors">{doc.title}</h3>
@@ -537,9 +623,8 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                                     Author
                                                 </span>
-                                                {/* Edited: "Edit" button removed from archive list for Authors/Admins */}
                                             </>
-                                        ) : isSuperAdmin ? (
+                                        ) : isSystemAdmin ? (
                                             <span className="text-xs text-gray-400">Admin View</span>
                                         ) : (
                                             <button
@@ -558,39 +643,162 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                             </div>
                         );
                     })}
+                    {filteredList.length === 0 && (
+                        <div className="p-8 text-center text-gray-500">
+                            No communications found.
+                        </div>
+                    )}
                 </div>
+
+                {/* Modern Clean Pagination */}
+                {totalArchivePages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-6 border-t border-gray-100">
+                         {/* Previous Button */}
+                        <button
+                            onClick={() => setArchivePage(p => Math.max(0, p - 1))}
+                            disabled={archivePage === 0}
+                            className={`group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                archivePage === 0 
+                                ? 'text-gray-300 cursor-not-allowed' 
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-brand-primary'
+                            }`}
+                        >
+                            <svg className={`w-4 h-4 transition-transform duration-200 ${archivePage !== 0 && 'group-hover:-translate-x-1'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Previous</span>
+                        </button>
+
+                        {/* Page Indicators */}
+                        <div className="flex items-center gap-1.5">
+                            {Array.from({ length: totalArchivePages }).map((_, index) => {
+                                // Logic to show relevant pages
+                                const isCurrent = archivePage === index;
+                                const isNear = Math.abs(archivePage - index) <= 1;
+                                const isEnd = index === 0 || index === totalArchivePages - 1;
+
+                                if (!isNear && !isEnd) {
+                                     if (index === 1 || index === totalArchivePages - 2) {
+                                         return <span key={index} className="w-8 text-center text-gray-300 text-xs font-medium">...</span>;
+                                     }
+                                     return null;
+                                }
+                                
+                                return (
+                                    <button
+                                        key={index}
+                                        onClick={() => setArchivePage(index)}
+                                        className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all duration-200 ${
+                                            isCurrent
+                                            ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20 scale-105' 
+                                            : 'text-gray-500 hover:bg-gray-50 hover:text-brand-dark'
+                                        }`}
+                                    >
+                                        {index + 1}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Next Button */}
+                        <button
+                            onClick={() => setArchivePage(p => Math.min(totalArchivePages - 1, p + 1))}
+                            disabled={archivePage >= totalArchivePages - 1}
+                            className={`group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                archivePage >= totalArchivePages - 1 
+                                ? 'text-gray-300 cursor-not-allowed' 
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-brand-primary'
+                            }`}
+                        >
+                            <span>Next</span>
+                            <svg className={`w-4 h-4 transition-transform duration-200 ${archivePage < totalArchivePages - 1 && 'group-hover:translate-x-1'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* Detail Modal - Reverted to Standard Style */}
+            {/* Detail Modal */}
             {selectedItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-                    <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full flex flex-col max-h-[85vh] animate-fade-in-up">
-                        {/* Standard Modal Header */}
-                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-lg">
-                             <div>
-                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold uppercase mb-1 tracking-wider ${getBadgeStyle(selectedItem.type)}`}>{selectedItem.type}</span>
-                                <h3 className="text-lg font-bold text-gray-800">{selectedItem.title}</h3>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[85vh] animate-fade-in-up overflow-hidden">
+                        {/* Modern Color-Filled Header */}
+                        <div className={`p-6 flex justify-between items-start ${getHeaderStyle(selectedItem.type)}`}>
+                             <div className="pr-8">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider bg-white/60 border border-black/5 shadow-sm ${
+                                        selectedItem.type === 'circular' ? 'text-blue-700' : 
+                                        selectedItem.type === 'memo' ? 'text-purple-700' : 'text-orange-700'
+                                    }`}>
+                                        {selectedItem.type}
+                                    </span>
+                                    {/* Edited Badge */}
+                                    {shouldShowEditedTag(selectedItem) && (
+                                        <span className="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-red-600 text-white shadow-sm border border-transparent">Edited</span>
+                                    )}
+                                </div>
+                                <h3 className="text-2xl font-bold leading-tight">{selectedItem.title}</h3>
                             </div>
-                            <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-gray-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                {/* Edit Button in Header - Uses strict canEditItem check */}
+                                {canEditItem(selectedItem) && (
+                                    <button 
+                                        onClick={() => handleOpenEdit(selectedItem)}
+                                        className="text-gray-500 hover:text-gray-900 p-2 rounded-full hover:bg-white/50 transition-colors"
+                                        title="Edit"
+                                    >
+                                        <EditPencilIcon />
+                                    </button>
+                                )}
+                                <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-gray-800 p-1 hover:bg-white/50 rounded-full transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
                         </div>
                         
                         {/* Scrollable Body */}
                         <div 
-                            className="p-6 overflow-y-auto"
+                            className="p-8 overflow-y-auto"
                             ref={modalContentRef}
                             onScroll={checkScroll}
                         >
-                             <div className="flex items-center text-sm text-gray-500 mb-6 pb-4 border-b border-gray-100">
-                                <span className="font-bold text-gray-700 mr-2">From:</span>
-                                <span className="mr-4">{selectedItem.publishedBy}</span>
-                                <span className="font-bold text-gray-700 mr-2">Date:</span>
-                                <span>{selectedItem.publishedAt.toLocaleDateString()}</span>
+                             <div className="flex items-center flex-wrap text-sm text-gray-500 mb-6 pb-4 border-b border-gray-100 gap-y-2">
+                                <div className="flex items-center mr-6">
+                                    <span className="font-bold text-gray-700 mr-2">From:</span>
+                                    <span className="mr-4">{selectedItem.publishedBy}</span>
+                                </div>
+                                <div className="flex items-center mr-6">
+                                    <span className="font-bold text-gray-700 mr-2">Date:</span>
+                                    <span>{selectedItem.publishedAt.toLocaleDateString()}</span>
+                                </div>
+                                {/* Visual Cue for Routing */}
+                                <div className="flex items-center w-full mt-2 sm:mt-0 sm:w-auto">
+                                    <span className="font-bold text-gray-700 mr-2">To:</span>
+                                    <div className="flex flex-wrap gap-1">
+                                        {selectedItem.targetRoles && selectedItem.targetRoles.map(role => (
+                                            <span key={role} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-semibold border border-gray-200">
+                                                {role === Role.ADMIN ? 'Admins' : role === Role.STAFF ? 'Staff' : role === Role.FACULTY ? 'Faculty' : role}
+                                            </span>
+                                        ))}
+                                        {selectedItem.targetUserIds && selectedItem.targetUserIds.map(uid => {
+                                            const user = MOCK_DIRECTORY_USERS.find(u => u.id === uid);
+                                            return user ? (
+                                                <span key={uid} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold border border-indigo-100 flex items-center">
+                                                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-1.5"></span>
+                                                    {user.name}
+                                                </span>
+                                            ) : null;
+                                        })}
+                                        {(!selectedItem.targetRoles?.length && !selectedItem.targetUserIds?.length) && (
+                                            <span className="text-gray-400 italic text-xs">Public</span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="prose prose-sm max-w-none text-gray-700 mb-8">
-                                <p className="whitespace-pre-wrap leading-relaxed">{selectedItem.content}</p>
+                            <div className="prose prose-sm max-w-none text-gray-800 mb-8 leading-relaxed text-base">
+                                <p className="whitespace-pre-wrap">{selectedItem.content}</p>
                             </div>
                             
                             {selectedItem.attachments && selectedItem.attachments.length > 0 && (
@@ -623,41 +831,34 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                             )}
                         </div>
 
-                        {/* Footer Actions */}
-                        <div className="p-5 border-t border-gray-100 bg-gray-50 flex justify-between items-center rounded-b-lg">
-                             {showSuccess ? (
-                                <div className="w-full flex justify-center"><span className="text-green-700 font-bold">Successfully Acknowledged</span></div>
-                             ) : (
-                                 <>
-                                    <div className="text-xs text-gray-500">
-                                        {(selectedItem.publishedBy === currentUser.name || isSuperAdmin) ? 
-                                            "Author/Admin Mode" : (!canAcknowledge && "Scroll to acknowledge")}
-                                    </div>
-                                    <div className="flex gap-3 ml-auto">
-                                        {(selectedItem.publishedBy === currentUser.name || isSuperAdmin) && (
-                                            <button 
-                                                onClick={() => handleOpenEdit(selectedItem)}
-                                                className="px-4 py-2 bg-white border border-brand-primary text-brand-primary font-bold rounded-lg hover:bg-brand-primary hover:text-white transition-colors text-sm"
-                                            >
-                                                Edit Announcement
-                                            </button>
-                                        )}
-                                        
-                                        <button onClick={() => setSelectedItem(null)} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 text-sm">Close</button>
-                                        
-                                        {!(selectedItem.publishedBy === currentUser.name || isSuperAdmin || selectedItem.acknowledgedBy.includes(currentUser.id)) && (
-                                            <button 
-                                                onClick={() => handleAcknowledge(selectedItem.id)}
-                                                disabled={!canAcknowledge}
-                                                className={`px-4 py-2 font-bold rounded-lg transition-all text-sm ${canAcknowledge ? 'bg-brand-primary text-white hover:bg-brand-primary-light' : 'bg-gray-200 text-gray-400'}`}
-                                            >
-                                                Acknowledge
-                                            </button>
-                                        )}
-                                    </div>
-                                 </>
-                             )}
-                        </div>
+                        {/* Footer Actions - HIDDEN IF USER HAS EDIT ACCESS */}
+                        {!canEditItem(selectedItem) && (
+                            <div className="p-5 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                                {showSuccess ? (
+                                    <div className="w-full flex justify-center"><span className="text-green-700 font-bold">Successfully Acknowledged</span></div>
+                                ) : (
+                                    <>
+                                        <div className="text-xs text-gray-500">
+                                            {!canAcknowledge ? "Scroll to acknowledge" : "Ready to acknowledge"}
+                                        </div>
+                                        <div className="flex gap-3 ml-auto">
+                                            <button onClick={() => setSelectedItem(null)} className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 text-sm transition-colors shadow-sm">Close</button>
+                                            
+                                            {/* Only show Acknowledge if not already acked (and handled by canEditItem logic, we know they aren't the editor) */}
+                                            {!selectedItem.acknowledgedBy.includes(currentUser.id) && (
+                                                <button 
+                                                    onClick={() => handleAcknowledge(selectedItem.id)}
+                                                    disabled={!canAcknowledge}
+                                                    className={`px-5 py-2.5 font-bold rounded-lg transition-all text-sm shadow-sm ${canAcknowledge ? 'bg-brand-primary text-white hover:bg-brand-primary-light hover:shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                                >
+                                                    Acknowledge
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -673,15 +874,92 @@ const Circulars: React.FC<{ currentUser: User }> = ({ currentUser }) => {
                         
                         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
                             
-                            {/* Error Display */}
+                            {/* Validation Message Display */}
                             {formErrors.length > 0 && (
-                                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm">
-                                    <p className="font-bold mb-1">Please fix the following errors:</p>
-                                    <ul className="list-disc list-inside">
-                                        {formErrors.map((err, i) => <li key={i}>{err}</li>)}
-                                    </ul>
+                                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-md">
+                                    <div className="flex">
+                                        <div className="flex-shrink-0">
+                                            <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div className="ml-3">
+                                            <h3 className="text-sm leading-5 font-medium text-amber-800">
+                                                Required Fields Missing
+                                            </h3>
+                                            <div className="mt-2 text-sm leading-5 text-amber-700">
+                                                <ul className="list-disc pl-5 space-y-1">
+                                                    {formErrors.map((err, i) => <li key={i}>{err}</li>)}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
+
+                            {/* Routing Section */}
+                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                                <label className="block text-sm font-bold text-gray-800 mb-2">Target Audience (Routing)</label>
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-4">
+                                        {[Role.STAFF, Role.FACULTY, Role.ADMIN].map((role) => (
+                                            <label key={role} className="inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="form-checkbox h-4 w-4 text-brand-primary rounded focus:ring-brand-primary border-gray-300"
+                                                    checked={formData.targetRoles.includes(role)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setFormData(prev => ({ ...prev, targetRoles: [...prev.targetRoles, role] }));
+                                                        } else {
+                                                            setFormData(prev => ({ ...prev, targetRoles: prev.targetRoles.filter(r => r !== role) }));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="ml-2 text-sm text-gray-700 font-medium">All {role === Role.ADMIN ? 'Admins' : role}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="border-t border-gray-200 pt-3">
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Specific Individuals</label>
+                                        <select 
+                                            className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                                            onChange={(e) => {
+                                                const uid = e.target.value;
+                                                if (uid && !formData.targetUserIds.includes(uid)) {
+                                                    setFormData(prev => ({ ...prev, targetUserIds: [...prev.targetUserIds, uid] }));
+                                                }
+                                                e.target.value = ''; // Reset select
+                                            }}
+                                            value=""
+                                        >
+                                            <option value="" disabled>Add specific person...</option>
+                                            {MOCK_DIRECTORY_USERS.filter(u => !formData.targetUserIds.includes(u.id)).map(user => (
+                                                <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
+                                            ))}
+                                        </select>
+                                        {formData.targetUserIds.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {formData.targetUserIds.map(uid => {
+                                                    const user = MOCK_DIRECTORY_USERS.find(u => u.id === uid);
+                                                    return (
+                                                        <div key={uid} className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs flex items-center font-medium">
+                                                            <span>{user?.name || uid}</span>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => setFormData(prev => ({ ...prev, targetUserIds: prev.targetUserIds.filter(id => id !== uid) }))}
+                                                                className="ml-1.5 text-indigo-400 hover:text-indigo-900 focus:outline-none"
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

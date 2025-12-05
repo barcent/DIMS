@@ -57,7 +57,11 @@ const daysAgo = (days: number) => {
     return d;
 };
 
+// All users for bulk acknowledgement of old items
+const ALL_USERS_ACK = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'];
+
 export const MOCK_CIRCULARS: Circular[] = [
+    // RECENT / PENDING (3 Items)
     { 
         id: 'a1', 
         title: 'System Maintenance Window', 
@@ -66,10 +70,12 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'high',
         publishedBy: 'System Root', 
         publishedAt: daysAgo(0), 
-        acknowledgedBy: [], 
-        totalRecipients: 0,
+        acknowledgedBy: [], // Pending for everyone
+        totalRecipients: 50,
         attachments: [],
-        history: []
+        history: [],
+        targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN],
+        targetUserIds: []
     },
     { 
         id: 'c3', 
@@ -79,10 +85,12 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'high',
         publishedBy: 'Admin User', 
         publishedAt: daysAgo(1), 
-        acknowledgedBy: [], 
+        acknowledgedBy: [], // Pending (Authored by Admin User)
         totalRecipients: 20,
         attachments: ['Health_Safety_v2.pdf'],
-        history: []
+        history: [],
+        targetRoles: [Role.STAFF, Role.FACULTY],
+        targetUserIds: []
     },
     { 
         id: 'c4', 
@@ -92,11 +100,14 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'high',
         publishedBy: 'Frank Blue', 
         publishedAt: daysAgo(2), 
-        acknowledgedBy: ['u2'], 
+        acknowledgedBy: [], // Pending for everyone
         totalRecipients: 25,
         attachments: [],
-        history: [] 
+        history: [],
+        targetRoles: [Role.ADMIN, Role.STAFF, Role.FACULTY],
+        targetUserIds: []
     },
+    // ACKNOWLEDGED / ARCHIVED
     { 
         id: 'm1', 
         title: 'Q4 Performance Review Reminder', 
@@ -105,8 +116,10 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'normal',
         publishedBy: 'Eve Black', 
         publishedAt: daysAgo(3), 
-        acknowledgedBy: ['u2'], 
-        totalRecipients: 7 
+        acknowledgedBy: ALL_USERS_ACK, 
+        totalRecipients: 7,
+        targetRoles: [Role.STAFF],
+        targetUserIds: []
     },
     { 
         id: 'c1', 
@@ -116,8 +129,10 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'normal',
         publishedBy: 'Admin User', 
         publishedAt: daysAgo(5), 
-        acknowledgedBy: ['u2', 'u4', 'u5'], 
-        totalRecipients: 7 
+        acknowledgedBy: ALL_USERS_ACK, 
+        totalRecipients: 7,
+        targetRoles: [Role.STAFF, Role.FACULTY],
+        targetUserIds: []
     },
     { 
         id: 'a2', 
@@ -127,8 +142,10 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'normal',
         publishedBy: 'Eve Black', 
         publishedAt: daysAgo(7), 
-        acknowledgedBy: [], 
-        totalRecipients: 0 
+        acknowledgedBy: ALL_USERS_ACK, 
+        totalRecipients: 0,
+        targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN],
+        targetUserIds: []
     },
     { 
         id: 'c2', 
@@ -138,32 +155,46 @@ export const MOCK_CIRCULARS: Circular[] = [
         priority: 'high',
         publishedBy: 'Frank Blue', 
         publishedAt: daysAgo(10), 
-        acknowledgedBy: ['u1', 'u2', 'u3', 'u5', 'u6', 'u7'], 
-        totalRecipients: 7 
+        acknowledgedBy: ALL_USERS_ACK, 
+        totalRecipients: 7,
+        targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN],
+        targetUserIds: []
     },
-    { id: 'm2', title: 'Office Supply Request Protocol', content: 'Effective immediately, all supply requests must be routed through the new ERP module.', type: 'memo', priority: 'normal', publishedBy: 'Bob Williams', publishedAt: daysAgo(12), acknowledgedBy: ['u1'], totalRecipients: 10 },
-    { id: 'a3', title: 'Cafeteria Menu Update', content: 'We have added vegan and gluten-free options to the daily menu starting next week.', type: 'announcement', priority: 'normal', publishedBy: 'Admin User', publishedAt: daysAgo(13), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c5', title: 'Fire Drill Schedule', content: 'The annual fire drill is scheduled for next Tuesday at 10:00 AM. Please assemble at the designated points.', type: 'circular', priority: 'high', publishedBy: 'System Root', publishedAt: daysAgo(15), acknowledgedBy: ['u1', 'u2'], totalRecipients: 50 },
-    { id: 'm3', title: 'Team Building Event', content: 'Join us for a team building event at the city park on Friday afternoon.', type: 'memo', priority: 'normal', publishedBy: 'Eve Black', publishedAt: daysAgo(16), acknowledgedBy: [], totalRecipients: 15 },
-    { id: 'a4', title: 'Server Downtime Alert', content: 'The main file server will be rebooted tonight at 3 AM. Expect brief interruptions.', type: 'announcement', priority: 'high', publishedBy: 'Frank Blue', publishedAt: daysAgo(18), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c6', title: 'New ID Card Issuance', content: 'All staff are required to obtain their new smart ID cards from the security office by Friday.', type: 'circular', priority: 'normal', publishedBy: 'Admin User', publishedAt: daysAgo(20), acknowledgedBy: ['u1', 'u2', 'u3', 'u4', 'u5'], totalRecipients: 50 },
-    { id: 'm4', title: 'Expense Report Guidelines', content: 'Updated guidelines for travel expense reimbursement are now available on the portal.', type: 'memo', priority: 'normal', publishedBy: 'Alice Johnson', publishedAt: daysAgo(22), acknowledgedBy: ['u1'], totalRecipients: 12 },
-    { id: 'a5', title: 'Parking Lot Maintenance', content: 'The north parking lot will be resurfaced this weekend. Please park in the south lot.', type: 'announcement', priority: 'normal', publishedBy: 'Bob Williams', publishedAt: daysAgo(25), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c7', title: 'Annual General Meeting', content: 'The AGM will be held on the 15th of next month. Attendance is mandatory for department heads.', type: 'circular', priority: 'high', publishedBy: 'System Root', publishedAt: daysAgo(28), acknowledgedBy: [], totalRecipients: 8 },
-    { id: 'm5', title: 'Project Alpha Kickoff', content: 'The kickoff meeting for Project Alpha is scheduled for Monday at 9 AM in Conference Room B.', type: 'memo', priority: 'high', publishedBy: 'Dr. Carol White', publishedAt: daysAgo(30), acknowledgedBy: ['u1', 'u2'], totalRecipients: 6 },
-    { id: 'a6', title: 'Lost and Found', content: 'A set of keys was found in the lobby. Please claim them at the reception.', type: 'announcement', priority: 'normal', publishedBy: 'Admin User', publishedAt: daysAgo(32), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c8', title: 'Code of Conduct Refresher', content: 'A friendly reminder to review the corporate code of conduct available in the handbook.', type: 'circular', priority: 'normal', publishedBy: 'Eve Black', publishedAt: daysAgo(35), acknowledgedBy: ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'], totalRecipients: 50 },
-    { id: 'm6', title: 'Software License Renewal', content: 'Please verify your Adobe license status and report to IT if expiration is near.', type: 'memo', priority: 'high', publishedBy: 'Frank Blue', publishedAt: daysAgo(38), acknowledgedBy: [], totalRecipients: 10 },
-    { id: 'a7', title: 'Weather Advisory', content: 'Due to heavy snow forecast, the office will close early at 3 PM today.', type: 'announcement', priority: 'high', publishedBy: 'Admin User', publishedAt: daysAgo(40), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c9', title: 'Data Privacy Workshop', content: 'A workshop on data privacy best practices will be held next Wednesday.', type: 'circular', priority: 'normal', publishedBy: 'Frank Blue', publishedAt: daysAgo(42), acknowledgedBy: [], totalRecipients: 20 },
-    { id: 'm7', title: 'Meeting Room Booking System', content: 'We are switching to a new booking system. Please refer to the tutorial sent via email.', type: 'memo', priority: 'normal', publishedBy: 'Alice Johnson', publishedAt: daysAgo(45), acknowledgedBy: ['u1'], totalRecipients: 50 },
-    { id: 'a8', title: 'Flu Shot Drive', content: 'Free flu shots will be administered in the clinic this Thursday.', type: 'announcement', priority: 'normal', publishedBy: 'Eve Black', publishedAt: daysAgo(48), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c10', title: 'Quarterly Town Hall', content: 'Join the leadership team for a quarterly update and Q&A session.', type: 'circular', priority: 'normal', publishedBy: 'System Root', publishedAt: daysAgo(50), acknowledgedBy: ['u1', 'u2', 'u3'], totalRecipients: 50 },
-    { id: 'm8', title: 'Work from Home Policy Update', content: 'The WFH policy has been revised to allow 3 days remote per week.', type: 'memo', priority: 'high', publishedBy: 'Eve Black', publishedAt: daysAgo(55), acknowledgedBy: ['u1', 'u2', 'u3', 'u4'], totalRecipients: 50 },
-    { id: 'a9', title: 'Recycling Initiative', content: 'New recycling bins have been placed in the break rooms. Please sort your waste.', type: 'announcement', priority: 'normal', publishedBy: 'David Green', publishedAt: daysAgo(60), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c11', title: 'Payroll Schedule Change', content: 'Payroll will now be processed on the 15th and 30th of each month.', type: 'circular', priority: 'high', publishedBy: 'Admin User', publishedAt: daysAgo(65), acknowledgedBy: ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'], totalRecipients: 50 },
-    { id: 'm9', title: 'Client Visit Protocol', content: 'Please ensure the meeting rooms are prepped 15 minutes prior to client arrivals.', type: 'memo', priority: 'normal', publishedBy: 'Alice Johnson', publishedAt: daysAgo(70), acknowledgedBy: [], totalRecipients: 10 },
-    { id: 'a10', title: 'Elevator Maintenance', content: 'Elevator B will be out of service for repairs tomorrow.', type: 'announcement', priority: 'normal', publishedBy: 'Bob Williams', publishedAt: daysAgo(75), acknowledgedBy: [], totalRecipients: 0 },
-    { id: 'c12', title: 'Strategic Planning Session', content: 'Leadership retreat for strategic planning is scheduled for next month.', type: 'circular', priority: 'normal', publishedBy: 'System Root', publishedAt: daysAgo(80), acknowledgedBy: [], totalRecipients: 5 },
-    { id: 'm10', title: 'KPI Submission Deadline', content: 'Reminder to submit your KPIs for the next quarter by Friday.', type: 'memo', priority: 'high', publishedBy: 'Eve Black', publishedAt: daysAgo(90), acknowledgedBy: ['u1'], totalRecipients: 50 },
+    { 
+        id: 'm2', 
+        title: 'Office Supply Request Protocol', 
+        content: 'Effective immediately, all supply requests must be routed through the new ERP module.', 
+        type: 'memo', 
+        priority: 'normal', 
+        publishedBy: 'Bob Williams', 
+        publishedAt: daysAgo(12), 
+        acknowledgedBy: ALL_USERS_ACK, 
+        totalRecipients: 10,
+        targetRoles: [Role.STAFF],
+        targetUserIds: []
+    },
+    { id: 'a3', title: 'Cafeteria Menu Update', content: 'We have added vegan and gluten-free options to the daily menu starting next week.', type: 'announcement', priority: 'normal', publishedBy: 'Admin User', publishedAt: daysAgo(13), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c5', title: 'Fire Drill Schedule', content: 'The annual fire drill is scheduled for next Tuesday at 10:00 AM. Please assemble at the designated points.', type: 'circular', priority: 'high', publishedBy: 'System Root', publishedAt: daysAgo(15), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'm3', title: 'Team Building Event', content: 'Join us for a team building event at the city park on Friday afternoon.', type: 'memo', priority: 'normal', publishedBy: 'Eve Black', publishedAt: daysAgo(16), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 15, targetRoles: [Role.STAFF], targetUserIds: [] },
+    { id: 'a4', title: 'Server Downtime Alert', content: 'The main file server will be rebooted tonight at 3 AM. Expect brief interruptions.', type: 'announcement', priority: 'high', publishedBy: 'Frank Blue', publishedAt: daysAgo(18), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c6', title: 'New ID Card Issuance', content: 'All staff are required to obtain their new smart ID cards from the security office by Friday.', type: 'circular', priority: 'normal', publishedBy: 'Admin User', publishedAt: daysAgo(20), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.FACULTY], targetUserIds: [] },
+    { id: 'm4', title: 'Expense Report Guidelines', content: 'Updated guidelines for travel expense reimbursement are now available on the portal.', type: 'memo', priority: 'normal', publishedBy: 'Alice Johnson', publishedAt: daysAgo(22), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 12, targetRoles: [Role.STAFF], targetUserIds: [] },
+    { id: 'a5', title: 'Parking Lot Maintenance', content: 'The north parking lot will be resurfaced this weekend. Please park in the south lot.', type: 'announcement', priority: 'normal', publishedBy: 'Bob Williams', publishedAt: daysAgo(25), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c7', title: 'Annual General Meeting', content: 'The AGM will be held on the 15th of next month. Attendance is mandatory for department heads.', type: 'circular', priority: 'high', publishedBy: 'System Root', publishedAt: daysAgo(28), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 8, targetRoles: [Role.ADMIN], targetUserIds: [] },
+    { id: 'm5', title: 'Project Alpha Kickoff', content: 'The kickoff meeting for Project Alpha is scheduled for Monday at 9 AM in Conference Room B.', type: 'memo', priority: 'high', publishedBy: 'Dr. Carol White', publishedAt: daysAgo(30), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 6, targetRoles: [], targetUserIds: ['u2', 'u3', 'u7'] },
+    { id: 'a6', title: 'Lost and Found', content: 'A set of keys was found in the lobby. Please claim them at the reception.', type: 'announcement', priority: 'normal', publishedBy: 'Admin User', publishedAt: daysAgo(32), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c8', title: 'Code of Conduct Refresher', content: 'A friendly reminder to review the corporate code of conduct available in the handbook.', type: 'circular', priority: 'normal', publishedBy: 'Eve Black', publishedAt: daysAgo(35), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'm6', title: 'Software License Renewal', content: 'Please verify your Adobe license status and report to IT if expiration is near.', type: 'memo', priority: 'high', publishedBy: 'Frank Blue', publishedAt: daysAgo(38), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 10, targetRoles: [Role.STAFF], targetUserIds: [] },
+    { id: 'a7', title: 'Weather Advisory', content: 'Due to heavy snow forecast, the office will close early at 3 PM today.', type: 'announcement', priority: 'high', publishedBy: 'Admin User', publishedAt: daysAgo(40), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c9', title: 'Data Privacy Workshop', content: 'A workshop on data privacy best practices will be held next Wednesday.', type: 'circular', priority: 'normal', publishedBy: 'Frank Blue', publishedAt: daysAgo(42), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 20, targetRoles: [Role.STAFF, Role.FACULTY], targetUserIds: [] },
+    { id: 'm7', title: 'Meeting Room Booking System', content: 'We are switching to a new booking system. Please refer to the tutorial sent via email.', type: 'memo', priority: 'normal', publishedBy: 'Alice Johnson', publishedAt: daysAgo(45), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'a8', title: 'Flu Shot Drive', content: 'Free flu shots will be administered in the clinic this Thursday.', type: 'announcement', priority: 'normal', publishedBy: 'Eve Black', publishedAt: daysAgo(48), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c10', title: 'Quarterly Town Hall', content: 'Join the leadership team for a quarterly update and Q&A session.', type: 'circular', priority: 'normal', publishedBy: 'System Root', publishedAt: daysAgo(50), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'm8', title: 'Work from Home Policy Update', content: 'The WFH policy has been revised to allow 3 days remote per week.', type: 'memo', priority: 'high', publishedBy: 'Eve Black', publishedAt: daysAgo(55), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.ADMIN], targetUserIds: [] },
+    { id: 'a9', title: 'Recycling Initiative', content: 'New recycling bins have been placed in the break rooms. Please sort your waste.', type: 'announcement', priority: 'normal', publishedBy: 'David Green', publishedAt: daysAgo(60), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c11', title: 'Payroll Schedule Change', content: 'Payroll will now be processed on the 15th and 30th of each month.', type: 'circular', priority: 'high', publishedBy: 'Admin User', publishedAt: daysAgo(65), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'm9', title: 'Client Visit Protocol', content: 'Please ensure the meeting rooms are prepped 15 minutes prior to client arrivals.', type: 'memo', priority: 'normal', publishedBy: 'Alice Johnson', publishedAt: daysAgo(70), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 10, targetRoles: [Role.STAFF], targetUserIds: [] },
+    { id: 'a10', title: 'Elevator Maintenance', content: 'Elevator B will be out of service for repairs tomorrow.', type: 'announcement', priority: 'normal', publishedBy: 'Bob Williams', publishedAt: daysAgo(75), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 0, targetRoles: [Role.STAFF, Role.FACULTY, Role.ADMIN], targetUserIds: [] },
+    { id: 'c12', title: 'Strategic Planning Session', content: 'Leadership retreat for strategic planning is scheduled for next month.', type: 'circular', priority: 'normal', publishedBy: 'System Root', publishedAt: daysAgo(80), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 5, targetRoles: [Role.ADMIN], targetUserIds: [] },
+    { id: 'm10', title: 'KPI Submission Deadline', content: 'Reminder to submit your KPIs for the next quarter by Friday.', type: 'memo', priority: 'high', publishedBy: 'Eve Black', publishedAt: daysAgo(90), acknowledgedBy: ALL_USERS_ACK, totalRecipients: 50, targetRoles: [Role.STAFF], targetUserIds: [] },
 ];
